@@ -13,6 +13,9 @@ const envSchema = z.object({
   DISCORD_APP_ID: z.string().min(1, 'DISCORD_APP_ID is required'),
   DISCORD_GUILD_ID: z.string().optional(),
 
+  // Database Configuration
+  DB_PATH: z.string().default('./data/bot.sqlite'),
+
   // Application Configuration
   NODE_ENV: z
     .enum(['development', 'production', 'test'])
