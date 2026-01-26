@@ -1,0 +1,10 @@
+{
+  "name": "@discord-bot/tsconfig",
+  "version": "1.0.0",
+  "description": "Shared TypeScript configuration",
+  "private": true,
+  "type": "module",
+  "files": [
+    "base.json"
+  ]
+}

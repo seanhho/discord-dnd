@@ -1,0 +1,27 @@
+{
+  "name": "@discord-bot/config",
+  "version": "1.0.0",
+  "description": "Environment configuration with validation",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@discord-bot/tsconfig": "*",
+    "typescript": "^5.3.3"
+  }
+}
