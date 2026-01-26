@@ -9,7 +9,7 @@
   ],
   "scripts": {
     "dev": "tsx watch src/main.ts",
-    "build": "tsc --build && npm run build --workspaces",
+    "build": "tsc --build && npm run build --workspace=@discord-bot/config --workspace=@discord-bot/logger",
     "start": "node dist/main.js",
     "test": "vitest run",
     "test:watch": "vitest",
