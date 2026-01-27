@@ -1,11 +1,17 @@
 import { Client, GatewayIntentBits, REST, Routes } from 'discord.js';
 import { createLogger } from '@discord-bot/logger';
+import {
+  SqliteClient,
+  SqliteUserRepo,
+  SqliteCharacterRepo,
+} from '@discord-bot/persistence';
 import { createFeatureRegistry } from './core/featureRegistry.js';
 import { createCommandRouter } from './core/commandRouter.js';
 import { env } from './core/env.js';
 
 // Import all feature slices
 import { diceFeature } from './features/dice/index.js';
+import { charFeature, initCharFeature } from './features/char/index.js';
 
 /**
  * Application context holding all wired dependencies
@@ -14,6 +20,7 @@ export interface AppContext {
   client: Client;
   logger: ReturnType<typeof createLogger>;
   registry: ReturnType<typeof createFeatureRegistry>;
+  dbClient: SqliteClient;
 }
 
 /**
@@ -36,6 +43,16 @@ export async function createApp(): Promise<AppContext> {
 
   logger.info('Initializing Discord bot');
 
+  // Initialize persistence layer
+  logger.info('Initializing database');
+  const dbClient = await SqliteClient.create({
+    dbPath: env.DB_PATH,
+  });
+
+  // Create repository instances
+  const userRepo = new SqliteUserRepo(dbClient.kysely);
+  const characterRepo = new SqliteCharacterRepo(dbClient.kysely);
+
   // Create Discord client with required intents
   const client = new Client({
     intents: [
@@ -47,10 +64,13 @@ export async function createApp(): Promise<AppContext> {
   // Create feature registry
   const registry = createFeatureRegistry();
 
+  // Initialize character feature with dependencies
+  initCharFeature({ userRepo, characterRepo });
+
   // Register all feature slices
   logger.info('Registering feature slices');
   registry.register(diceFeature);
-  // Add more feature registrations here as you build them
+  registry.register(charFeature);
 
   logger.info(`Registered ${registry.getAll().length} feature(s)`);
 
@@ -74,6 +94,7 @@ export async function createApp(): Promise<AppContext> {
     client,
     logger,
     registry,
+    dbClient,
   };
 }
 
