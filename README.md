@@ -1,475 +1,348 @@
-# Discord Bot - Feature Slice Architecture
+# RPG Character Tracker Bot
 
-A production-ready Discord bot built with TypeScript and Feature Slice architecture, designed for long-term scalability and maintainability.
-
-## Architecture Overview
-
-This project uses **Feature Slice** architecture to organize code by domain capabilities rather than technical layers. Each feature is self-contained, testable, and follows strict dependency rules.
-
-### Key Principles
-
-1. **Feature Isolation**: Each feature slice is independent and cannot directly import from other features
-2. **Core Coordination**: The `src/core` layer manages feature registration and routing
-3. **Clean Boundaries**: Business logic (services) is separated from Discord.js adapters (commands)
-4. **Testability**: Pure domain logic can be tested without Discord.js mocks
-
-## Directory Structure
-
-```
-discord-bot/
-├── src/
-│   ├── main.ts                 # Application entry point
-│   ├── app.ts                  # Application wiring and setup
-│   ├── core/                   # Core infrastructure
-│   │   ├── types.ts           # Shared type definitions
-│   │   ├── env.ts             # Environment configuration
-│   │   ├── featureRegistry.ts # Feature registration
-│   │   └── commandRouter.ts   # Command routing logic
-│   └── features/              # Feature slices
-│       └── dice/              # Dice rolling feature
-│           ├── index.ts       # Public exports (FeatureSlice)
-│           ├── types.ts       # Feature-specific types
-│           ├── schema.ts      # Zod validation schemas
-│           ├── service.ts     # Pure domain logic (NO discord.js)
-│           ├── command.ts     # Discord command definition + handler
-│           └── __tests__/     # Unit tests
-│               └── service.test.ts
-├── packages/                  # Internal shared packages
-│   ├── config/               # Environment validation
-│   ├── logger/               # Structured logging
-│   └── tsconfig/             # Shared TypeScript config
-├── package.json              # Root package with workspace config
-├── tsconfig.json             # Root TypeScript config
-├── .env.example              # Environment variable template
-└── README.md                 # This file
-```
-
-## Feature Slice Pattern
-
-### What is a Feature Slice?
-
-A feature slice is a self-contained module that implements a single Discord bot capability (like dice rolling, weather lookup, or moderation). Each slice follows a strict structure:
-
-```
-src/features/<featureName>/
-├── index.ts        # Exports the FeatureSlice (name, command, handler)
-├── types.ts        # TypeScript types for this feature
-├── schema.ts       # Zod schemas for input validation
-├── service.ts      # Pure domain logic (NO discord.js imports)
-├── command.ts      # Discord slash command + handler
-└── __tests__/      # Tests for service.ts
-    └── service.test.ts
-```
-
-### Feature Slice Rules
-
-**MANDATORY:**
-
-1. **No cross-feature imports**: Features cannot import from other features
-2. **Pure services**: `service.ts` must NOT import discord.js (for testability)
-3. **Single export**: `index.ts` exports a single `FeatureSlice` object
-4. **Dependency injection**: Services accept dependencies (like RNG) as parameters
-5. **Validation**: Use Zod schemas to validate all user inputs
-
-### Feature Slice Example: Dice
-
-The dice feature demonstrates the pattern:
-
-- **types.ts**: Defines `DiceRollParams`, `DiceRollResult`, `RandomNumberGenerator`
-- **schema.ts**: Zod schema validating sides (2-1000), count (1-50), modifier (-1000 to 1000)
-- **service.ts**: Pure functions `rollDice()` and `formatRollResult()` with no Discord coupling
-- **command.ts**: Discord slash command builder and `handleRollCommand()` adapter
-- **index.ts**: Exports `diceFeature: FeatureSlice`
-
-## Core Responsibilities
-
-### `src/core/types.ts`
-
-Defines shared types:
-- `FeatureSlice`: The contract every feature must implement
-- `FeatureRegistry`: Interface for registering features
-- `CommandHandler`: Type for Discord command handlers
-
-### `src/core/featureRegistry.ts`
-
-Central registry that:
-- Stores all registered features in a Map
-- Prevents duplicate feature names
-- Provides lookup by command name
-
-### `src/core/commandRouter.ts`
-
-Routing layer that:
-- Receives all Discord interactions
-- Filters for slash commands
-- Looks up the handler from the registry
-- Executes handlers with error handling
-- Reports errors back to users
-
-### `src/core/env.ts`
-
-Re-exports validated environment configuration from `@discord-bot/config`.
-
-## Command Flow
-
-```
-Discord User
-    ↓
-    types "/roll sides:20 count:2"
-    ↓
-Discord API
-    ↓
-    sends Interaction event
-    ↓
-main.ts → app.ts → commandRouter
-    ↓
-    looks up "roll" in registry
-    ↓
-features/dice/command.ts (handleRollCommand)
-    ↓
-    validates input with schema.ts
-    ↓
-    calls service.ts (rollDice)
-    ↓
-    formats result
-    ↓
-    replies to Discord
-```
-
-## Command Registration
-
-Commands can be registered in two ways:
-
-### Guild Commands (Development)
-
-- **Speed**: Instant registration
-- **Scope**: Only works in the specified guild
-- **Usage**: Set `DISCORD_GUILD_ID` in `.env`
-
-```bash
-DISCORD_GUILD_ID=123456789012345678
-```
-
-### Global Commands (Production)
-
-- **Speed**: Up to 1 hour propagation time
-- **Scope**: Works in all guilds where the bot is installed
-- **Usage**: Leave `DISCORD_GUILD_ID` empty in `.env`
-
-The bot automatically chooses the registration strategy based on whether `DISCORD_GUILD_ID` is set.
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js >= 20.0.0
-- npm >= 10.0.0
-- A Discord bot token (from [Discord Developer Portal](https://discord.com/developers/applications))
-
-### Installation
-
-```bash
-# Install dependencies for all workspaces
-npm install
-```
-
-### Configuration
-
-```bash
-# Copy the example environment file
-cp .env.example .env
-
-# Edit .env and fill in your values:
-# - DISCORD_TOKEN: Your bot token
-# - DISCORD_APP_ID: Your application ID
-# - DISCORD_GUILD_ID: (optional) Guild ID for dev testing
-```
-
-### Development
-
-```bash
-# Run in watch mode (auto-restart on changes)
-npm run dev
-```
-
-### Building
-
-```bash
-# Compile TypeScript to JavaScript
-npm run build
-```
-
-### Running in Production
-
-```bash
-# Build first
-npm run build
-
-# Start the compiled bot
-npm start
-```
-
-### Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-```
-
-### Linting & Formatting
-
-```bash
-# Check for lint errors
-npm run lint
-
-# Auto-fix lint errors
-npm run lint:fix
-
-# Check formatting
-npm run format:check
-
-# Auto-format code
-npm run format
-```
-
-## Adding a New Feature Slice
-
-Follow these steps to add a new command/feature:
-
-### 1. Create the Feature Directory
-
-```bash
-mkdir -p src/features/<featureName>/__tests__
-```
-
-### 2. Create Required Files
-
-Create these files in order:
-
-#### `types.ts` - Define domain types
-```typescript
-export interface MyFeatureParams {
-  // Input parameters
-}
-
-export interface MyFeatureResult {
-  // Output result
-}
-```
-
-#### `schema.ts` - Define Zod validation
-```typescript
-import { z } from 'zod';
-
-export const myFeatureSchema = z.object({
-  // Validation rules
-});
-
-export type MyFeatureInput = z.infer<typeof myFeatureSchema>;
-```
-
-#### `service.ts` - Pure domain logic
-```typescript
-// NO discord.js imports allowed!
-export function myFeatureLogic(params: MyFeatureParams): MyFeatureResult {
-  // Pure business logic
-}
-```
-
-#### `command.ts` - Discord command + handler
-```typescript
-import { SlashCommandBuilder } from 'discord.js';
-import type { ChatInputCommandInteraction } from 'discord.js';
-
-export const myCommand = new SlashCommandBuilder()
-  .setName('mycommand')
-  .setDescription('...');
-
-export async function handleMyCommand(
-  interaction: ChatInputCommandInteraction
-): Promise<void> {
-  // Extract options
-  // Validate with schema
-  // Call service
-  // Reply to user
-}
-```
-
-#### `index.ts` - Export the feature slice
-```typescript
-import type { FeatureSlice } from '../../core/types.js';
-import { myCommand, handleMyCommand } from './command.js';
-
-export const myFeature: FeatureSlice = {
-  name: 'mycommand',
-  command: myCommand,
-  handler: handleMyCommand,
-};
-```
-
-#### `__tests__/service.test.ts` - Unit tests
-```typescript
-import { describe, it, expect } from 'vitest';
-import { myFeatureLogic } from '../service.js';
-
-describe('myFeatureLogic', () => {
-  it('should ...', () => {
-    // Test your pure logic
-  });
-});
-```
-
-### 3. Register the Feature
-
-In `src/app.ts`, import and register your feature:
-
-```typescript
-import { myFeature } from './features/myFeature/index.js';
-
-// In createApp():
-registry.register(myFeature);
-```
-
-### 4. Test and Deploy
-
-```bash
-# Run tests
-npm test
-
-# Build
-npm run build
-
-# Start bot
-npm run dev
-```
-
-Your new command should now be available in Discord!
-
-## Feature Checklist
-
-When adding a new feature, ensure:
-
-- [ ] Feature directory created: `src/features/<name>/`
-- [ ] All required files present: `index.ts`, `types.ts`, `schema.ts`, `service.ts`, `command.ts`
-- [ ] Service has NO discord.js imports
-- [ ] Input validated with Zod schema
-- [ ] Unit tests written for service logic
-- [ ] Feature registered in `src/app.ts`
-- [ ] Tests pass: `npm test`
-- [ ] Linting passes: `npm run lint`
-- [ ] Type-checking passes: `npm run typecheck`
-
-## Testing Strategy
-
-### Unit Tests (Vitest)
-
-- **Target**: Pure business logic in `service.ts` files
-- **Why**: Fast, deterministic, no mocks needed
-- **How**: Inject dependencies (RNG, etc.) to control behavior
-
-### Integration Tests (Manual)
-
-- **Target**: Discord command handlers
-- **Why**: Discord.js interactions are hard to mock effectively
-- **How**: Test in a real Discord server with `DISCORD_GUILD_ID` set
-
-### What We Test
-
-- ✅ Service functions with various inputs
-- ✅ Edge cases and error conditions
-- ✅ Validation schemas reject invalid input
-- ✅ Formatting functions produce correct output
-
-### What We Don't Test
-
-- ❌ Discord.js internals (trust the library)
-- ❌ Network requests to Discord API (integration test territory)
-- ❌ Command registration (manual verification)
-
-## Internal Packages
-
-### `@discord-bot/config`
-
-Environment variable parsing and validation using Zod.
-
-**Exports:**
-- `env`: Validated environment configuration
-- `isDevelopment`, `isProduction`, `isTest`: Environment checks
-
-### `@discord-bot/logger`
-
-Structured logging with level filtering and colored output.
-
-**Usage:**
-```typescript
-import { createLogger } from '@discord-bot/logger';
-
-const logger = createLogger({ level: 'info', prefix: 'myFeature' });
-logger.info('Something happened', { userId: 123 });
-```
-
-### `@discord-bot/tsconfig`
-
-Shared TypeScript compiler configuration.
-
-**Usage:**
-```json
-{
-  "extends": "@discord-bot/tsconfig/base.json"
-}
-```
-
-## Tech Stack
-
-- **Runtime**: Node.js 20+ (LTS)
-- **Language**: TypeScript 5.3+
-- **Package Manager**: npm (workspaces)
-- **Discord Library**: discord.js v14
-- **Validation**: Zod
-- **Testing**: Vitest
-- **Linting**: ESLint + Prettier
-
-## Best Practices
-
-1. **Keep services pure**: No side effects, no Discord.js imports in `service.ts`
-2. **Validate early**: Use Zod schemas to catch bad input at the command boundary
-3. **Test the logic**: Focus tests on business logic, not Discord adapters
-4. **Handle errors gracefully**: Catch errors in handlers and report to users
-5. **Use dependency injection**: Pass dependencies (RNG, APIs) as parameters for testability
-6. **Follow the pattern**: Every feature follows the same structure for consistency
-
-## Troubleshooting
-
-### Commands not showing up in Discord
-
-- **Guild commands**: Should appear instantly. Check `DISCORD_GUILD_ID` is correct.
-- **Global commands**: Can take up to 1 hour. Be patient or use guild commands for dev.
-
-### Build errors
-
-```bash
-# Clean build artifacts
-npm run clean
-
-# Reinstall dependencies
-rm -rf node_modules package-lock.json
-npm install
-```
-
-### Type errors in editor
-
-```bash
-# Rebuild TypeScript declaration files
-npm run build
-```
-
-## License
-
-MIT
+A Discord bot for tracking your tabletop RPG characters. Create characters, manage their stats, and keep everything organized right in Discord.
 
 ---
 
-**Built with Feature Slice Architecture for long-term maintainability.**
+## What This Bot Does
+
+This bot helps you:
+- **Create characters** with names and stats
+- **Track ability scores** (Strength, Dexterity, etc.)
+- **Manage hit points, armor class, and equipment**
+- **Switch between multiple characters** with one command
+- **Roll dice** for your game
+
+Your characters are saved per server, so you can have different characters in different Discord servers.
+
+---
+
+## Getting Started
+
+### For Players
+
+No setup needed! Just start using the commands below. Your first character will be created automatically when you use `/char set`.
+
+### For Server Admins
+
+Invite the bot to your server using the invite link provided by the bot owner. The bot needs permission to:
+- Read and send messages
+- Use slash commands
+
+---
+
+## Characters Overview
+
+### What is a Character?
+
+A character stores your RPG character's stats — things like their name, class, level, ability scores, and equipment.
+
+### One Active Character
+
+You can have multiple characters, but one is your **active character**. When you use commands without specifying a name, they apply to your active character.
+
+### Characters Are Per-Server
+
+Each server has its own set of characters. Your "Gandalf" in one server is separate from "Gandalf" in another.
+
+---
+
+## Commands Guide
+
+### `/roll` — Roll Dice
+
+Roll dice for your game.
+
+**Options:**
+- `sides` — How many sides on the die (default: 20)
+- `count` — How many dice to roll (default: 1)
+- `modifier` — Number to add to the total (default: 0)
+- `label` — Optional name for the roll
+
+**Examples:**
+```
+/roll
+→ Rolls 1d20
+
+/roll sides:6 count:4
+→ Rolls 4d6
+
+/roll sides:20 modifier:5 label:Attack Roll
+→ Rolls 1d20+5 labeled "Attack Roll"
+```
+
+---
+
+### `/char set` — Create or Update a Character
+
+Create a new character or update an existing one's stats.
+
+**How to use:**
+```
+/char set name:CharacterName attributes:{key:value, key:value}
+```
+
+**Example — Create a new character:**
+```
+/char set name:Gandalf attributes:{class:"Wizard", level:20}
+```
+
+**Example — Set ability scores:**
+```
+/char set name:Gandalf attributes:{str:10, dex:14, con:14, int:20, wis:18, cha:16}
+```
+
+**Example — Set hit points:**
+```
+/char set name:Gandalf attributes:{hp.max:102, hp.current:102, ac:12}
+```
+
+**Output:**
+```
+Updated "Gandalf"
+
+Changes:
+  class: — → "Wizard"
+  level: — → 20
+
+Computed:
+  Proficiency Bonus: +6
+```
+
+**Tips:**
+- If the character doesn't exist, it's created automatically
+- You can set multiple stats in one command
+- Use quotes around text values: `class:"Wizard"`
+- Numbers don't need quotes: `level:20`
+
+---
+
+### `/char show` — View Character Information
+
+See your character's stats.
+
+**Basic usage:**
+```
+/char show
+→ Shows your active character
+
+/char show name:Gandalf
+→ Shows Gandalf specifically
+```
+
+**Views:**
+
+| View | What it shows |
+|------|---------------|
+| (none) | Summary of key stats |
+| `stats` | Ability scores with modifiers |
+| `hp` | Hit points, AC, speed |
+| `equipment` | Weapons and gear |
+| `attacks` | Attack calculations |
+| `all` | Everything |
+| `help` | List of all available stat keys |
+| `template` | Copy-paste examples |
+| `characters` | All your characters in this server |
+| `active` | Just the active character's name |
+
+**Examples:**
+```
+/char show view:stats
+→ Shows ability scores
+
+/char show view:characters
+→ Lists all your characters
+
+/char show view:help
+→ Shows what keys you can set
+```
+
+---
+
+### `/char active` — Switch Active Character
+
+Change which character is your default.
+
+**Usage:**
+```
+/char active name:Gandalf
+```
+
+**Output:**
+```
+Active character set to "Gandalf"
+```
+
+Now when you use `/char show` without a name, it shows Gandalf.
+
+---
+
+### `/char get` — Get Specific Stats
+
+Retrieve particular attributes from your character.
+
+**Options:**
+- `name` — Character name (optional, defaults to active)
+- `keys` — Space-separated list of stats to get
+- `prefix` — Get all stats starting with this prefix
+- `computed` — Include calculated values like modifiers
+
+**Examples:**
+```
+/char get keys:str dex con
+→ Shows Strength, Dexterity, Constitution
+
+/char get prefix:weapon
+→ Shows all weapon stats
+
+/char get keys:str computed:true
+→ Shows Strength and its modifier
+```
+
+---
+
+### `/char unset` — Remove Stats
+
+Remove attributes from a character.
+
+**Usage:**
+```
+/char unset keys:hp.current hp.temp
+```
+
+**Example:**
+```
+/char unset keys:weapon.primary.name weapon.primary.damage
+```
+
+**Output:**
+```
+Gandalf - Attributes removed
+Removed: weapon.primary.name, weapon.primary.damage
+Remaining attributes: 8
+```
+
+---
+
+## Common Workflows
+
+### Create Your First Character
+
+```
+/char set name:Thorin attributes:{class:"Fighter", level:5, str:18, dex:12, con:16, int:10, wis:13, cha:14}
+```
+
+### Check Your Stats
+
+```
+/char show
+```
+
+### Update After Leveling Up
+
+```
+/char set name:Thorin attributes:{level:6, hp.max:58}
+```
+
+### Take Damage
+
+```
+/char set name:Thorin attributes:{hp.current:42}
+```
+
+### Switch Characters
+
+```
+/char active name:Bilbo
+```
+
+### See All Your Characters
+
+```
+/char show view:characters
+```
+
+---
+
+## Available Stats
+
+### Identity
+- `name` — Character name
+- `class` — Class (Fighter, Wizard, etc.)
+- `level` — Level (1-20)
+
+### Ability Scores (1-30)
+- `str` — Strength
+- `dex` — Dexterity
+- `con` — Constitution
+- `int` — Intelligence
+- `wis` — Wisdom
+- `cha` — Charisma
+
+### Combat
+- `hp.max` — Maximum hit points
+- `hp.current` — Current hit points
+- `ac` — Armor class (1-50)
+- `speed` — Movement speed in feet
+
+### Weapon
+- `weapon.primary.name` — Weapon name
+- `weapon.primary.damage` — Damage dice (e.g., "1d8+3")
+- `weapon.primary.proficient` — true/false
+
+### Custom Stats
+
+You can add any stat you want! Unknown stats are saved as text.
+
+```
+/char set name:Gandalf attributes:{backstory:"Grey wizard from Valinor"}
+```
+
+---
+
+## Tips & Gotchas
+
+### Character Names Are Case-Insensitive
+
+`Gandalf`, `GANDALF`, and `gandalf` all refer to the same character.
+
+### Set an Active Character
+
+Many commands default to your active character. If you haven't set one, you'll need to specify `name:` each time.
+
+### Use Quotes for Text
+
+Text values need quotes:
+- Correct: `class:"Wizard"`
+- Wrong: `class:Wizard` (will still work, but quotes are safer for text with spaces)
+
+### Numbers Don't Need Quotes
+
+- Correct: `level:5`
+- Also works: `level:"5"` (converted automatically)
+
+### Computed Values Are Automatic
+
+You don't need to enter ability modifiers or proficiency bonus — they're calculated from your ability scores and level.
+
+---
+
+## Quick Reference
+
+| Command | What it does |
+|---------|--------------|
+| `/roll` | Roll dice |
+| `/char set name:X attributes:{...}` | Create/update character |
+| `/char show` | View character stats |
+| `/char show view:characters` | List all characters |
+| `/char active name:X` | Switch active character |
+| `/char get keys:X Y Z` | Get specific stats |
+| `/char unset keys:X Y Z` | Remove stats |
+
+---
+
+## Need Help?
+
+- Use `/char show view:help` to see all available stat keys
+- Use `/char show view:template` for copy-paste examples
+- Report issues to your server admin or the bot maintainer
