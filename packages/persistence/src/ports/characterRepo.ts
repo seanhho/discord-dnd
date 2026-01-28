@@ -80,6 +80,14 @@ export interface CharacterRepo {
   createCharacter(params: CreateCharacterParams): Promise<Character>;
 
   /**
+   * Get a character by ID.
+   *
+   * @param characterId - Character UUID
+   * @returns The character if found, null otherwise
+   */
+  getById(characterId: string): Promise<Character | null>;
+
+  /**
    * Get a character by name (case-insensitive).
    *
    * @param params - Lookup parameters

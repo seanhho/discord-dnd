@@ -74,6 +74,16 @@ export class SqliteCharacterRepo implements CharacterRepo {
     return toCharacter(newCharacter);
   }
 
+  async getById(characterId: string): Promise<Character | null> {
+    const row = await this.db
+      .selectFrom('characters')
+      .selectAll()
+      .where('id', '=', characterId)
+      .executeTakeFirst();
+
+    return row ? toCharacter(row) : null;
+  }
+
   async getByName(params: GetByNameParams): Promise<Character | null> {
     const { userId, guildId, name } = params;
 

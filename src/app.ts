@@ -12,6 +12,16 @@ import { env } from './core/env.js';
 // Import all feature slices
 import { diceFeature } from './features/dice/index.js';
 import { charFeature, initCharFeature } from './features/char/index.js';
+import {
+  equipmentFeature,
+  armorFeature,
+  inventoryFeature,
+  initEquipmentFeature,
+  handleEquipmentButton,
+  handleEquipmentSelectMenu,
+  isEquipmentButton,
+  isEquipmentSelectMenu,
+} from './features/equipment/index.js';
 
 /**
  * Application context holding all wired dependencies
@@ -64,13 +74,17 @@ export async function createApp(): Promise<AppContext> {
   // Create feature registry
   const registry = createFeatureRegistry();
 
-  // Initialize character feature with dependencies
+  // Initialize features with dependencies
   initCharFeature({ userRepo, characterRepo });
+  initEquipmentFeature({ userRepo, characterRepo });
 
   // Register all feature slices
   logger.info('Registering feature slices');
   registry.register(diceFeature);
   registry.register(charFeature);
+  registry.register(equipmentFeature);
+  registry.register(armorFeature);
+  registry.register(inventoryFeature);
 
   logger.info(`Registered ${registry.getAll().length} feature(s)`);
 
@@ -79,6 +93,35 @@ export async function createApp(): Promise<AppContext> {
 
   // Set up interaction handler
   client.on('interactionCreate', async (interaction) => {
+    // Handle button interactions for equipment
+    if (interaction.isButton()) {
+      if (isEquipmentButton(interaction.customId)) {
+        try {
+          await handleEquipmentButton(interaction);
+        } catch (error) {
+          logger.error('Equipment button error', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        return;
+      }
+    }
+
+    // Handle select menu interactions for equipment
+    if (interaction.isStringSelectMenu()) {
+      if (isEquipmentSelectMenu(interaction.customId)) {
+        try {
+          await handleEquipmentSelectMenu(interaction);
+        } catch (error) {
+          logger.error('Equipment select menu error', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        return;
+      }
+    }
+
+    // Route command interactions
     await router(interaction);
   });
 
