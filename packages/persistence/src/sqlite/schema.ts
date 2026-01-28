@@ -10,6 +10,8 @@
 export interface UsersTable {
   id: string;
   discord_user_id: string;
+  /** 0 = false, 1 = true (SQLite boolean for DM capability) */
+  is_dm: number;
   created_at: string;
   updated_at: string;
 }
