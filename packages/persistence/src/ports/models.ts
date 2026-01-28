@@ -32,6 +32,8 @@ export interface User {
   readonly id: string;
   /** Discord user ID (snowflake) */
   readonly discordUserId: string;
+  /** Whether this user has DM (Dungeon Master) capability */
+  readonly isDm: boolean;
   /** ISO 8601 timestamp of creation */
   readonly createdAt: string;
   /** ISO 8601 timestamp of last update */

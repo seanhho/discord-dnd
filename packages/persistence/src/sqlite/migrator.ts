@@ -1,5 +1,6 @@
 import { Kysely, Migrator, type MigrationProvider, type Migration } from 'kysely';
 import * as migration001 from './migrations/001_initial.js';
+import * as migration003 from './migrations/003_dm_capability.js';
 
 /**
  * Static migration provider that bundles all migrations.
@@ -9,6 +10,7 @@ class StaticMigrationProvider implements MigrationProvider {
   async getMigrations(): Promise<Record<string, Migration>> {
     return {
       '001_initial': migration001,
+      '003_dm_capability': migration003,
     };
   }
 }

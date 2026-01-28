@@ -71,6 +71,111 @@ describe('SQLite Repositories', () => {
 
       expect(found).toBeNull();
     });
+
+    describe('DM capability', () => {
+      it('should default isDm to false for new users', async () => {
+        const user = await userRepo.getOrCreateByDiscordUserId('123456789012345678');
+
+        expect(user.isDm).toBe(false);
+      });
+
+      it('should set DM status to true via setUserDmStatus', async () => {
+        const user = await userRepo.getOrCreateByDiscordUserId('123456789012345678');
+
+        await userRepo.setUserDmStatus(user.id, true);
+
+        const isDm = await userRepo.isUserDm(user.id);
+        expect(isDm).toBe(true);
+      });
+
+      it('should set DM status to false via setUserDmStatus', async () => {
+        const user = await userRepo.getOrCreateByDiscordUserId('123456789012345678');
+
+        // First set to true
+        await userRepo.setUserDmStatus(user.id, true);
+        expect(await userRepo.isUserDm(user.id)).toBe(true);
+
+        // Then set back to false
+        await userRepo.setUserDmStatus(user.id, false);
+        expect(await userRepo.isUserDm(user.id)).toBe(false);
+      });
+
+      it('should throw when setting DM status for non-existent user', async () => {
+        await expect(
+          userRepo.setUserDmStatus('non-existent-uuid', true)
+        ).rejects.toThrow('User not found');
+      });
+
+      it('should return false for isUserDm when user does not exist', async () => {
+        const isDm = await userRepo.isUserDm('non-existent-uuid');
+        expect(isDm).toBe(false);
+      });
+
+      it('should set DM status via setDmByDiscordUserId', async () => {
+        const discordUserId = '123456789012345678';
+
+        // Should create user and set DM status
+        await userRepo.setDmByDiscordUserId(discordUserId, true);
+
+        const isDm = await userRepo.isDmByDiscordUserId(discordUserId);
+        expect(isDm).toBe(true);
+      });
+
+      it('should revoke DM status via setDmByDiscordUserId', async () => {
+        const discordUserId = '123456789012345678';
+
+        // Grant DM
+        await userRepo.setDmByDiscordUserId(discordUserId, true);
+        expect(await userRepo.isDmByDiscordUserId(discordUserId)).toBe(true);
+
+        // Revoke DM
+        await userRepo.setDmByDiscordUserId(discordUserId, false);
+        expect(await userRepo.isDmByDiscordUserId(discordUserId)).toBe(false);
+      });
+
+      it('should return false for isDmByDiscordUserId when user does not exist', async () => {
+        const isDm = await userRepo.isDmByDiscordUserId('non-existent-discord-id');
+        expect(isDm).toBe(false);
+      });
+
+      it('should list all DM users', async () => {
+        // Create several users
+        await userRepo.setDmByDiscordUserId('111111111111111111', true);
+        await userRepo.setDmByDiscordUserId('222222222222222222', false);
+        await userRepo.setDmByDiscordUserId('333333333333333333', true);
+        await userRepo.getOrCreateByDiscordUserId('444444444444444444'); // Non-DM
+
+        const dmUsers = await userRepo.listDmUsers();
+
+        expect(dmUsers).toHaveLength(2);
+        const discordIds = dmUsers.map((u) => u.discordUserId).sort();
+        expect(discordIds).toEqual(['111111111111111111', '333333333333333333']);
+        expect(dmUsers.every((u) => u.isDm === true)).toBe(true);
+      });
+
+      it('should return empty array when no DM users exist', async () => {
+        // Create some non-DM users
+        await userRepo.getOrCreateByDiscordUserId('111111111111111111');
+        await userRepo.getOrCreateByDiscordUserId('222222222222222222');
+
+        const dmUsers = await userRepo.listDmUsers();
+
+        expect(dmUsers).toHaveLength(0);
+      });
+
+      it('should update updated_at when changing DM status', async () => {
+        const user = await userRepo.getOrCreateByDiscordUserId('123456789012345678');
+        const originalUpdatedAt = user.updatedAt;
+
+        // Small delay to ensure timestamp changes
+        await new Promise((resolve) => setTimeout(resolve, 10));
+
+        await userRepo.setUserDmStatus(user.id, true);
+        const updatedUser = await userRepo.getById(user.id);
+
+        expect(updatedUser?.updatedAt).not.toBe(originalUpdatedAt);
+      });
+    });
   });
 
   describe('CharacterRepo', () => {
