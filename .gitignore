@@ -32,3 +32,9 @@ coverage/
 .cache/
 tmp/
 temp/
+
+# Database
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
