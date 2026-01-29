@@ -7,6 +7,7 @@
  * - /char show - Show character information
  * - /char get - Get specific attributes
  * - /char unset - Remove attributes
+ * - /char create - Guided character creation
  */
 
 import type { FeatureSlice } from '../../core/types.js';

@@ -8,6 +8,7 @@
 export type {
   UserRepo,
   CharacterRepo,
+  CharacterCreationRepo,
   User,
   Character,
   AttributeValue,
@@ -21,4 +22,5 @@ export { AttrValue } from '@discord-bot/persistence';
 export interface CharacterFeatureDeps {
   userRepo: import('@discord-bot/persistence').UserRepo;
   characterRepo: import('@discord-bot/persistence').CharacterRepo;
+  characterCreationRepo: import('@discord-bot/persistence').CharacterCreationRepo;
 }
