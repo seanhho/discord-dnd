@@ -1,12 +1,61 @@
 /**
  * Validators for character attributes.
  *
- * Uses kv.config.ts as the source of truth for type coercion and constraints.
- * Unknown keys are allowed but stored as strings with a warning.
+ * STRICT KEY ENFORCEMENT:
+ * - Only keys defined in @discord-bot/dnd5e-types are allowed
+ * - Unknown keys are REJECTED (not stored)
+ * - Validation happens BEFORE any persistence updates
  */
 
+import {
+  isCharKvKey,
+  getInvalidKeys,
+} from '@discord-bot/dnd5e-types';
 import type { ParsedEntry, KeyValidation, ValidationResult } from '../types.js';
-import { getKeyConfig, type KvKeyConfig } from './kv.config.js';
+import { getKeyConfigOrDefault, type KvKeyConfig } from './kv.config.js';
+
+/**
+ * Error result when invalid keys are detected.
+ */
+export interface InvalidKeysError {
+  success: false;
+  error: string;
+  invalidKeys: string[];
+}
+
+/**
+ * Validate that all keys in a patch are allowed.
+ *
+ * This is the FIRST validation step - it must pass before any other validation.
+ *
+ * @param entries - Parsed entries to validate
+ * @returns Error if any keys are invalid, undefined if all keys are valid
+ */
+export function validateAllKeysAllowed(entries: ParsedEntry[]): InvalidKeysError | undefined {
+  const keys = entries.map((e) => e.key);
+  const invalidKeys = getInvalidKeys(keys);
+
+  if (invalidKeys.length > 0) {
+    const keyList = invalidKeys.map((k) => `"${k}"`).join(', ');
+    const error = [
+      `Unknown keys: ${keyList}`,
+      '',
+      'Only predefined character attribute keys are allowed.',
+      'Use `/char show view:help` to see valid keys.',
+      '',
+      'For inventory items, use the format: inv.<item_id>.<property>',
+      'Example: inv.longsword.name, inv.longsword.damage',
+    ].join('\n');
+
+    return {
+      success: false,
+      error,
+      invalidKeys,
+    };
+  }
+
+  return undefined;
+}
 
 /**
  * Validate and coerce a single key-value pair.
@@ -16,16 +65,26 @@ import { getKeyConfig, type KvKeyConfig } from './kv.config.js';
  */
 export function validateEntry(entry: ParsedEntry): KeyValidation {
   const { key, rawValue } = entry;
-  const config = getKeyConfig(key);
 
+  // Key must be allowed (this should have been checked already, but double-check)
+  if (!isCharKvKey(key)) {
+    return {
+      key,
+      valid: false,
+      coercedType: 'string',
+      value: rawValue,
+      error: `Unknown key "${key}". Use /char show view:help to see valid keys.`,
+    };
+  }
+
+  const config = getKeyConfigOrDefault(key);
   if (!config) {
-    // Unknown key - store as string with warning
+    // This shouldn't happen if isCharKvKey passed, but handle gracefully
     return {
       key,
       valid: true,
       coercedType: 'string',
       value: rawValue,
-      warning: `Unknown key "${key}" - storing as string. Use /char show view:help to see valid keys.`,
     };
   }
 
@@ -163,6 +222,9 @@ function validateString(
 /**
  * Validate all entries in a patch.
  *
+ * IMPORTANT: This function assumes all keys have already been validated as allowed.
+ * Call validateAllKeysAllowed() first.
+ *
  * @param entries - Parsed entries to validate
  * @returns Validation result with all validations, errors, and warnings
  */
@@ -195,6 +257,6 @@ export function validatePatch(entries: ParsedEntry[]): ValidationResult {
  * Check if a key affects computed values.
  */
 export function keyAffectsComputed(key: string): boolean {
-  const config = getKeyConfig(key);
+  const config = getKeyConfigOrDefault(key);
   return config?.affectsComputed ?? false;
 }

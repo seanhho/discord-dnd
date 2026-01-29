@@ -63,3 +63,20 @@ export {
   isCondition,
   isWeaponProperty,
 } from './guards.js';
+
+// Character KV Keys
+export {
+  CHAR_KV_KEYS,
+  CHAR_KV_KEY_SET,
+  CHAR_KV_KEY_GROUPS,
+  CHAR_KV_GROUP_NAMES,
+  CHAR_KV_GROUP_ORDER,
+  INVENTORY_ITEM_PROPERTIES,
+  type InventoryItemProperty,
+  isCharKvKey,
+  isValidItemId,
+  isInventoryKey,
+  parseInventoryKey,
+  getInvalidKeys,
+  validateCharKvKeys,
+} from './charKvKeys.js';

@@ -524,7 +524,7 @@ async function handleGet(
         .filter((k) => k.length > 0)
     : undefined;
 
-  const values = getAttributeValues(character.attributes, {
+  const { values, hiddenKeyCount } = getAttributeValues(character.attributes, {
     keys,
     prefix: prefixOpt ?? undefined,
     includeComputed,
@@ -542,6 +542,12 @@ async function handleGet(
   for (const [key, { value, isComputed }] of Object.entries(values)) {
     const computed = isComputed ? ' (computed)' : '';
     lines.push(`  ${key}: ${value}${computed}`);
+  }
+
+  // Warn about hidden legacy keys
+  if (hiddenKeyCount > 0) {
+    lines.push('');
+    lines.push(`*${hiddenKeyCount} legacy key(s) hidden. Use \`/char unset\` to clean up.*`);
   }
 
   await interaction.reply({
@@ -630,7 +636,11 @@ function generateHelpView(): string {
 
   lines.push('*Keys marked with * affect computed values (mods, proficiency)*');
   lines.push('');
-  lines.push('Unknown keys are allowed but stored as strings with a warning.');
+  lines.push('**Inventory Items (dynamic):**');
+  lines.push('  `inv.<item_id>.<property>` - Inventory item properties');
+  lines.push('  Example: `inv.longsword.name`, `inv.longsword.damage`');
+  lines.push('');
+  lines.push('Only predefined keys are allowed. Unknown keys will be rejected.');
 
   return lines.join('\n');
 }
