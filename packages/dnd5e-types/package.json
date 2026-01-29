@@ -1,0 +1,26 @@
+{
+  "name": "@discord-bot/dnd5e-types",
+  "version": "1.0.0",
+  "description": "Stable D&D 5e type definitions - safe for persistence layer imports",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist *.tsbuildinfo",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@discord-bot/tsconfig": "*",
+    "typescript": "^5.3.3",
+    "vitest": "^1.2.2"
+  }
+}
