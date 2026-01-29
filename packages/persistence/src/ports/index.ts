@@ -5,7 +5,16 @@
  */
 
 // Domain models
-export type { User, Character, AttributeValue } from './models.js';
+export type {
+  User,
+  Character,
+  AttributeValue,
+  Encounter,
+  EncounterStatus,
+  EncounterParticipant,
+  ParticipantKind,
+  EncounterEvent,
+} from './models.js';
 export { AttrValue } from './models.js';
 
 // Repository interfaces
@@ -20,3 +29,17 @@ export type {
   SetActiveCharacterParams,
   GetActiveCharacterParams,
 } from './characterRepo.js';
+
+// Encounter repository interfaces
+export type {
+  EncounterRepo,
+  CreateEncounterParams,
+  EncounterContextParams,
+  UpdateEncounterParams,
+  EncounterParticipantRepo,
+  AddPcParticipantParams,
+  AddNpcParticipantParams,
+  InitiativeEntry,
+  EncounterEventRepo,
+  AppendEventParams,
+} from './encounterRepo.js';
