@@ -7,6 +7,9 @@
  * - /char show - Show character information
  * - /char get - Get specific attributes
  * - /char unset - Remove attributes
+ * - /char setup start - Start character creation wizard
+ * - /char setup resume - Resume an active wizard
+ * - /char setup cancel - Cancel an active wizard
  */
 
 import {
@@ -23,6 +26,11 @@ import {
   getKeysByGroup,
 } from './kv/kv.config.js';
 import type { ShowView } from './types.js';
+import {
+  handleSetupStart,
+  handleSetupResume,
+  handleSetupCancel,
+} from './setup/index.js';
 
 /**
  * Build the /char command with all subcommands.
@@ -151,6 +159,35 @@ export const charCommand = new SlashCommandBuilder()
           .setRequired(false)
           .setMaxLength(100)
       )
+  )
+
+  // /char setup - subcommand group for character creation wizard
+  .addSubcommandGroup((group) =>
+    group
+      .setName('setup')
+      .setDescription('Character creation wizard')
+      .addSubcommand((sub) =>
+        sub
+          .setName('start')
+          .setDescription('Start the character creation wizard')
+          .addStringOption((opt) =>
+            opt
+              .setName('name')
+              .setDescription('Character name')
+              .setRequired(true)
+              .setMaxLength(100)
+          )
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName('resume')
+          .setDescription('Resume an active character creation wizard')
+      )
+      .addSubcommand((sub) =>
+        sub
+          .setName('cancel')
+          .setDescription('Cancel an active character creation wizard')
+      )
   );
 
 /**
@@ -184,8 +221,31 @@ function getDeps(): CharacterFeatureDeps {
 export async function handleCharCommand(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
+  const subcommandGroup = interaction.options.getSubcommandGroup(false);
   const subcommand = interaction.options.getSubcommand();
 
+  // Handle /char setup subcommand group
+  if (subcommandGroup === 'setup') {
+    switch (subcommand) {
+      case 'start':
+        await handleSetupStart(interaction);
+        break;
+      case 'resume':
+        await handleSetupResume(interaction);
+        break;
+      case 'cancel':
+        await handleSetupCancel(interaction);
+        break;
+      default:
+        await interaction.reply({
+          content: `Unknown setup subcommand: ${subcommand}`,
+          ephemeral: true,
+        });
+    }
+    return;
+  }
+
+  // Handle regular subcommands
   switch (subcommand) {
     case 'set':
       await handleSet(interaction);

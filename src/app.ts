@@ -4,6 +4,7 @@ import {
   SqliteClient,
   SqliteUserRepo,
   SqliteCharacterRepo,
+  SqliteWizardStateRepo,
 } from '@discord-bot/persistence';
 import { createFeatureRegistry } from './core/featureRegistry.js';
 import { createCommandRouter } from './core/commandRouter.js';
@@ -11,7 +12,14 @@ import { env } from './core/env.js';
 
 // Import all feature slices
 import { diceFeature } from './features/dice/index.js';
-import { charFeature, initCharFeature } from './features/char/index.js';
+import {
+  charFeature,
+  initCharFeature,
+  initCharWizard,
+  handleWizardButton,
+  handleWizardModal,
+  isWizardInteraction,
+} from './features/char/index.js';
 
 /**
  * Application context holding all wired dependencies
@@ -52,6 +60,7 @@ export async function createApp(): Promise<AppContext> {
   // Create repository instances
   const userRepo = new SqliteUserRepo(dbClient.kysely);
   const characterRepo = new SqliteCharacterRepo(dbClient.kysely);
+  const wizardStateRepo = new SqliteWizardStateRepo(dbClient.kysely);
 
   // Create Discord client with required intents
   const client = new Client({
@@ -67,6 +76,14 @@ export async function createApp(): Promise<AppContext> {
   // Initialize character feature with dependencies
   initCharFeature({ userRepo, characterRepo });
 
+  // Initialize character wizard (must be called after client is created)
+  initCharWizard({
+    client,
+    userRepo,
+    characterRepo,
+    wizardStateRepo,
+  });
+
   // Register all feature slices
   logger.info('Registering feature slices');
   registry.register(diceFeature);
@@ -79,6 +96,43 @@ export async function createApp(): Promise<AppContext> {
 
   // Set up interaction handler
   client.on('interactionCreate', async (interaction) => {
+    // Handle button interactions for wizard
+    if (interaction.isButton() && isWizardInteraction(interaction.customId)) {
+      try {
+        await handleWizardButton(interaction);
+      } catch (error) {
+        logger.error('Wizard button error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: 'An error occurred while processing your request.',
+            ephemeral: true,
+          });
+        }
+      }
+      return;
+    }
+
+    // Handle modal submissions for wizard
+    if (interaction.isModalSubmit() && isWizardInteraction(interaction.customId)) {
+      try {
+        await handleWizardModal(interaction);
+      } catch (error) {
+        logger.error('Wizard modal error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({
+            content: 'An error occurred while processing your request.',
+            ephemeral: true,
+          });
+        }
+      }
+      return;
+    }
+
+    // Handle slash commands
     await router(interaction);
   });
 
