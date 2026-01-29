@@ -23,6 +23,12 @@ import {
   getKeysByGroup,
 } from './kv/kv.config.js';
 import type { ShowView } from './types.js';
+import {
+  handleSetupStart,
+  handleSetupResume,
+  handleSetupCancel,
+  handleSetupInteraction,
+} from './setup/handlers.js';
 
 /**
  * Build the /char command with all subcommands.
@@ -153,6 +159,21 @@ export const charCommand = new SlashCommandBuilder()
       )
   );
 
+charCommand.addSubcommandGroup((group) =>
+  group
+    .setName('setup')
+    .setDescription('Guided character setup wizard')
+    .addSubcommand((sub) =>
+      sub.setName('start').setDescription('Start the character setup wizard')
+    )
+    .addSubcommand((sub) =>
+      sub.setName('resume').setDescription('Resume the character setup wizard')
+    )
+    .addSubcommand((sub) =>
+      sub.setName('cancel').setDescription('Cancel the character setup wizard')
+    )
+);
+
 /**
  * Dependencies required by the char command handler.
  */
@@ -184,6 +205,23 @@ function getDeps(): CharacterFeatureDeps {
 export async function handleCharCommand(
   interaction: ChatInputCommandInteraction
 ): Promise<void> {
+  const subcommandGroup = interaction.options.getSubcommandGroup(false);
+  if (subcommandGroup === 'setup') {
+    const setupSubcommand = interaction.options.getSubcommand();
+    if (setupSubcommand === 'start') {
+      await handleSetupStart(interaction);
+      return;
+    }
+    if (setupSubcommand === 'resume') {
+      await handleSetupResume(interaction);
+      return;
+    }
+    if (setupSubcommand === 'cancel') {
+      await handleSetupCancel(interaction);
+      return;
+    }
+  }
+
   const subcommand = interaction.options.getSubcommand();
 
   switch (subcommand) {
@@ -208,6 +246,12 @@ export async function handleCharCommand(
         ephemeral: true,
       });
   }
+}
+
+export async function handleCharInteraction(
+  interaction: import('discord.js').Interaction
+): Promise<boolean> {
+  return handleSetupInteraction(interaction);
 }
 
 /**

@@ -3,6 +3,7 @@ import {
   SqliteClient,
   SqliteUserRepo,
   SqliteCharacterRepo,
+  SqliteWizardStateRepo,
   AttrValue,
 } from '../../src/index.js';
 import type {
@@ -10,12 +11,14 @@ import type {
   CharacterRepo,
   User,
   Character,
+  WizardStateRepo,
 } from '../../src/ports/index.js';
 
 describe('SQLite Repositories', () => {
   let client: SqliteClient;
   let userRepo: UserRepo;
   let characterRepo: CharacterRepo;
+  let wizardStateRepo: WizardStateRepo;
 
   beforeEach(async () => {
     // Create in-memory database for each test
@@ -25,6 +28,7 @@ describe('SQLite Repositories', () => {
     });
     userRepo = new SqliteUserRepo(client.kysely);
     characterRepo = new SqliteCharacterRepo(client.kysely);
+    wizardStateRepo = new SqliteWizardStateRepo(client.kysely);
   });
 
   afterEach(async () => {
@@ -574,6 +578,43 @@ describe('SQLite Repositories', () => {
           class: { t: 's', v: 'barbarian' },
         });
       });
+    });
+  });
+
+  describe('WizardStateRepo', () => {
+    it('should save and load wizard state records', async () => {
+      const record = {
+        instanceId: 'char-setup:123',
+        machineName: 'CharSetupWizard',
+        machineVersion: '1.0.0',
+        stateJson: '{"type":"identity"}',
+        expiresAt: Date.now() + 60000,
+        updatedAt: Date.now(),
+      };
+
+      await wizardStateRepo.saveWizardState(record);
+
+      const loaded = await wizardStateRepo.loadWizardState(record.instanceId);
+
+      expect(loaded).not.toBeNull();
+      expect(loaded).toEqual(record);
+    });
+
+    it('should delete wizard state records', async () => {
+      const record = {
+        instanceId: 'char-setup:delete',
+        machineName: 'CharSetupWizard',
+        machineVersion: '1.0.0',
+        stateJson: '{"type":"identity"}',
+        expiresAt: Date.now() + 60000,
+        updatedAt: Date.now(),
+      };
+
+      await wizardStateRepo.saveWizardState(record);
+      await wizardStateRepo.deleteWizardState(record.instanceId);
+
+      const loaded = await wizardStateRepo.loadWizardState(record.instanceId);
+      expect(loaded).toBeNull();
     });
   });
 });

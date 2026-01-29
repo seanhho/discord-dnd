@@ -10,8 +10,14 @@
  */
 
 import type { FeatureSlice } from '../../core/types.js';
-import { charCommand, handleCharCommand, setCharacterDeps } from './command.js';
+import {
+  charCommand,
+  handleCharCommand,
+  handleCharInteraction,
+  setCharacterDeps,
+} from './command.js';
 import type { CharacterFeatureDeps } from './repo/ports.js';
+import { initWizardRuntime } from './setup/handlers.js';
 
 /**
  * Character feature slice definition.
@@ -20,6 +26,7 @@ export const charFeature: FeatureSlice = {
   name: 'char',
   command: charCommand,
   handler: handleCharCommand,
+  interactionHandler: handleCharInteraction,
 };
 
 /**
@@ -28,6 +35,7 @@ export const charFeature: FeatureSlice = {
  */
 export function initCharFeature(deps: CharacterFeatureDeps): void {
   setCharacterDeps(deps);
+  initWizardRuntime(deps);
 }
 
 // Re-export types and utilities that may be needed by other modules
