@@ -20,3 +20,8 @@ export type {
   SetActiveCharacterParams,
   GetActiveCharacterParams,
 } from './characterRepo.js';
+export type {
+  CharacterCreationRepo,
+  CharacterCreationStateRecord,
+  UpsertCharacterCreationStateParams,
+} from './characterCreationRepo.js';

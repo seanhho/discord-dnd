@@ -7,6 +7,7 @@
  * - /char show - Show character information
  * - /char get - Get specific attributes
  * - /char unset - Remove attributes
+ * - /char create - Guided character creation
  */
 
 import {
@@ -23,6 +24,12 @@ import {
   getKeysByGroup,
 } from './kv/kv.config.js';
 import type { ShowView } from './types.js';
+import { AttrValue, type AttributeValue } from './repo/ports.js';
+import {
+  createCharacterCreationEngine,
+  formatPrompt,
+  type CharacterCreationState,
+} from './creation/wizard.js';
 
 /**
  * Build the /char command with all subcommands.
@@ -153,6 +160,34 @@ export const charCommand = new SlashCommandBuilder()
       )
   );
 
+// /char create
+charCommand.addSubcommand((sub) =>
+  sub
+    .setName('create')
+    .setDescription('Guided D&D 5e character creation')
+    .addStringOption((opt) =>
+      opt
+        .setName('action')
+        .setDescription('Creation step action')
+        .setRequired(true)
+        .addChoices(
+          { name: 'Start', value: 'start' },
+          { name: 'Answer', value: 'answer' },
+          { name: 'Back', value: 'back' },
+          { name: 'Status', value: 'status' },
+          { name: 'Finish', value: 'finish' },
+          { name: 'Cancel', value: 'cancel' }
+        )
+    )
+    .addStringOption((opt) =>
+      opt
+        .setName('input')
+        .setDescription('Answer for the current step')
+        .setRequired(false)
+        .setMaxLength(200)
+    )
+);
+
 /**
  * Dependencies required by the char command handler.
  */
@@ -201,6 +236,9 @@ export async function handleCharCommand(
       break;
     case 'unset':
       await handleUnset(interaction);
+      break;
+    case 'create':
+      await handleCreate(interaction);
       break;
     default:
       await interaction.reply({
@@ -605,6 +643,194 @@ async function handleUnset(
     content: lines.join('\n'),
     ephemeral: true,
   });
+}
+
+async function handleCreate(
+  interaction: ChatInputCommandInteraction
+): Promise<void> {
+  const { userRepo, characterRepo, characterCreationRepo } = getDeps();
+
+  if (!interaction.guildId) {
+    await interaction.reply({
+      content: 'This command can only be used in a server.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  const action = interaction.options.getString('action', true);
+  const input = interaction.options.getString('input');
+
+  const user = await userRepo.getOrCreateByDiscordUserId(interaction.user.id);
+  const guildId = interaction.guildId;
+  const instanceId = `${guildId}:${user.id}`;
+
+  const engine = createCharacterCreationEngine(
+    characterCreationRepo,
+    user.id,
+    guildId
+  );
+
+  if (action === 'status') {
+    const state = (await engine.getState(instanceId)) ?? ({ type: 'Idle' } as CharacterCreationState);
+    await interaction.reply({
+      content: formatPrompt(state),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (action === 'cancel') {
+    await engine.dispatch(instanceId, { type: 'CANCEL' });
+    await engine.delete(instanceId);
+    await interaction.reply({
+      content: 'Character creation canceled.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (action === 'answer' && !input) {
+    await interaction.reply({
+      content: 'Please provide an `input` value for this step.',
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (action === 'start') {
+    const result = await engine.dispatch(instanceId, { type: 'START' });
+    const lines = buildCreationResponse(result.state, result.errors);
+    await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+    return;
+  }
+
+  if (action === 'back') {
+    const result = await engine.dispatch(instanceId, { type: 'BACK' });
+    const lines = buildCreationResponse(result.state, result.errors);
+    await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+    return;
+  }
+
+  if (action === 'answer') {
+    const result = await engine.dispatch(instanceId, {
+      type: 'ANSWER',
+      value: input ?? '',
+    });
+    const lines = buildCreationResponse(result.state, result.errors);
+    await interaction.reply({ content: lines.join('\n'), ephemeral: true });
+    return;
+  }
+
+  if (action === 'finish') {
+    const result = await engine.dispatch(instanceId, { type: 'FINISH' });
+    if (result.errors && result.errors.length > 0) {
+      await interaction.reply({
+        content: buildCreationResponse(result.state, result.errors).join('\n'),
+        ephemeral: true,
+      });
+      return;
+    }
+
+    if (result.state.type !== 'Complete') {
+      await interaction.reply({
+        content: formatPrompt(result.state),
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const draft = result.state.draft;
+    if (!draft.name) {
+      await interaction.reply({
+        content: 'Missing character name. Use `/char create action:start` to restart.',
+        ephemeral: true,
+      });
+      return;
+    }
+
+    let character = await characterRepo.getByName({
+      userId: user.id,
+      guildId,
+      name: draft.name,
+    });
+
+    const created = !character;
+    if (!character) {
+      character = await characterRepo.createCharacter({
+        userId: user.id,
+        guildId,
+        name: draft.name,
+      });
+    }
+
+    const patch: Record<string, AttributeValue> = {};
+    if (draft.class) patch['class'] = AttrValue.str(draft.class);
+    if (draft.level !== undefined) patch['level'] = AttrValue.num(draft.level);
+    for (const ability of Object.keys(draft.abilities)) {
+      const value = draft.abilities[ability as keyof typeof draft.abilities];
+      if (value !== undefined) {
+        patch[ability] = AttrValue.num(value);
+      }
+    }
+    if (draft.hpMax !== undefined) {
+      patch['hp.max'] = AttrValue.num(draft.hpMax);
+      patch['hp.current'] = AttrValue.num(draft.hpMax);
+    }
+    if (draft.ac !== undefined) patch['ac'] = AttrValue.num(draft.ac);
+    if (draft.speed !== undefined) patch['speed'] = AttrValue.num(draft.speed);
+    if (draft.weaponName) patch['weapon.primary.name'] = AttrValue.str(draft.weaponName);
+    if (draft.weaponDamage) {
+      patch['weapon.primary.damage'] = AttrValue.str(draft.weaponDamage);
+    }
+    if (draft.weaponProficient !== undefined) {
+      patch['weapon.primary.proficient'] = AttrValue.bool(draft.weaponProficient);
+    }
+
+    await characterRepo.updateAttributes({
+      characterId: character.id,
+      patch,
+    });
+
+    if (created) {
+      await characterRepo.setActiveCharacter({
+        userId: user.id,
+        guildId,
+        characterId: character.id,
+      });
+    }
+
+    await engine.delete(instanceId);
+
+    await interaction.reply({
+      content: [
+        `Character "${character.name}" ${created ? 'created' : 'updated'} successfully.`,
+        created
+          ? 'It is now your active character.'
+          : 'Use `/char show` to view the updated character.',
+      ].join('\n'),
+      ephemeral: true,
+    });
+    return;
+  }
+
+  await interaction.reply({
+    content: 'Unknown action. Use `/char create action:status` for help.',
+    ephemeral: true,
+  });
+}
+
+function buildCreationResponse(
+  state: CharacterCreationState,
+  errors?: string[]
+): string[] {
+  const lines: string[] = [];
+  if (errors && errors.length > 0) {
+    lines.push(`**Error:** ${errors.join(' ')}`);
+    lines.push('');
+  }
+  lines.push(formatPrompt(state));
+  return lines;
 }
 
 // ============ View Generators ============

@@ -276,6 +276,29 @@ Creates a character if it doesn't exist, then applies attribute patches.
 
 ---
 
+### `/char create` — Guided Character Creation
+
+Walk through a step-by-step D&D 5e character creation flow.
+
+| Option | Required | Description |
+|--------|----------|-------------|
+| `action` | Yes | `start`, `answer`, `back`, `status`, `finish`, or `cancel` |
+| `input` | No | Answer for the current step (used with `action:answer`) |
+
+**Flow**:
+- `start` begins a new session (name → class → level → abilities → HP → AC → speed → weapon).
+- `answer` submits a response to the current step.
+- `back` returns to the previous step.
+- `status` shows the current prompt.
+- `finish` finalizes and creates/updates the character.
+- `cancel` discards the session.
+
+**Example**:
+`/char create action:start`
+`/char create action:answer input:"Gandalf"`
+
+---
+
 ## 7. Persistence and Migrations
 
 ### Architecture
@@ -300,6 +323,8 @@ Migrations run automatically on startup via `SqliteClient.create()` with `runMig
 ### Migration Files
 
 - `001_initial.ts`: Creates users, characters, active_characters tables
+- `003_dm_capability.ts`: Adds `is_dm` to users
+- `004_character_creation_states.ts`: Stores state machine sessions for `/char create`
 
 ### Known Caveats
 
@@ -436,7 +461,7 @@ Before submitting a PR:
 
 - [ ] **Character deletion**: No `/char delete` command exists.
 
-- [ ] **`/char setup` wizard**: An interactive character creation flow is not implemented.
+- [ ] **`/char setup` wizard**: Deprecated - replaced by `/char create`.
 
 - [ ] **Auto-activate on create**: When creating a character with `/char set` and no active character exists, the new character should become active. (Partial implementation may exist — verify in code.)
 

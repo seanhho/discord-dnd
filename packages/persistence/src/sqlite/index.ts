@@ -7,4 +7,5 @@ export { SqliteClient } from './db.js';
 export type { SqliteConfig } from './db.js';
 export { SqliteUserRepo } from './userRepo.js';
 export { SqliteCharacterRepo } from './characterRepo.js';
+export { SqliteCharacterCreationRepo } from './characterCreationRepo.js';
 export { runMigrations, rollbackMigration } from './migrator.js';

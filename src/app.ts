@@ -4,6 +4,7 @@ import {
   SqliteClient,
   SqliteUserRepo,
   SqliteCharacterRepo,
+  SqliteCharacterCreationRepo,
 } from '@discord-bot/persistence';
 import { createFeatureRegistry } from './core/featureRegistry.js';
 import { createCommandRouter } from './core/commandRouter.js';
@@ -52,6 +53,7 @@ export async function createApp(): Promise<AppContext> {
   // Create repository instances
   const userRepo = new SqliteUserRepo(dbClient.kysely);
   const characterRepo = new SqliteCharacterRepo(dbClient.kysely);
+  const characterCreationRepo = new SqliteCharacterCreationRepo(dbClient.kysely);
 
   // Create Discord client with required intents
   const client = new Client({
@@ -65,7 +67,7 @@ export async function createApp(): Promise<AppContext> {
   const registry = createFeatureRegistry();
 
   // Initialize character feature with dependencies
-  initCharFeature({ userRepo, characterRepo });
+  initCharFeature({ userRepo, characterRepo, characterCreationRepo });
 
   // Register all feature slices
   logger.info('Registering feature slices');

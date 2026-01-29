@@ -43,10 +43,24 @@ export interface ActiveCharactersTable {
 }
 
 /**
+ * Character creation session state table schema.
+ */
+export interface CharacterCreationStatesTable {
+  instance_id: string;
+  user_id: string;
+  guild_id: string;
+  state: string;
+  meta: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
  * Complete database schema
  */
 export interface Database {
   users: UsersTable;
   characters: CharactersTable;
   active_characters: ActiveCharactersTable;
+  character_creation_states: CharacterCreationStatesTable;
 }

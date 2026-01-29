@@ -8,6 +8,7 @@ A Discord bot for tracking your tabletop RPG characters. Create characters, mana
 
 This bot helps you:
 - **Create characters** with names and stats
+- **Walk through character creation** with a guided wizard
 - **Track ability scores** (Strength, Dexterity, etc.)
 - **Manage hit points, armor class, and equipment**
 - **Switch between multiple characters** with one command
@@ -114,6 +115,33 @@ Computed:
 - You can set multiple stats in one command
 - Use quotes around text values: `class:"Wizard"`
 - Numbers don't need quotes: `level:20`
+
+---
+
+### `/char create` — Guided Character Creation
+
+Walk through a step-by-step D&D 5e character creation flow.
+
+**How to start:**
+```
+/char create action:start
+```
+
+**Answer each step:**
+```
+/char create action:answer input:"Gandalf"
+```
+
+**Other actions:**
+- `action:status` — show your current step
+- `action:back` — go to the previous step
+- `action:finish` — finalize and save the character
+- `action:cancel` — abandon the wizard
+
+**Notes:**
+- The wizard collects name, class, level, ability scores, HP, AC, speed, and a primary weapon.
+- If the character already exists, it will be updated with the new values.
+- If you create a new character, it becomes your active character.
 
 ---
 
