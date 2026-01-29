@@ -20,3 +20,8 @@ export type {
   SetActiveCharacterParams,
   GetActiveCharacterParams,
 } from './characterRepo.js';
+export type {
+  WizardStateRepo,
+  WizardState,
+  SaveWizardStateParams,
+} from './wizardStateRepo.js';
