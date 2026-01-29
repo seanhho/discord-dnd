@@ -25,6 +25,30 @@ export function createCommandRouter(config: CommandRouterConfig) {
   return async function routeCommand(interaction: Interaction): Promise<void> {
     // Only handle chat input commands (slash commands)
     if (!interaction.isChatInputCommand()) {
+      const handlers = registry
+        .getAll()
+        .map((feature) => feature.interactionHandler)
+        .filter((handler): handler is NonNullable<typeof handler> => Boolean(handler));
+
+      if (handlers.length === 0) {
+        return;
+      }
+
+      for (const handler of handlers) {
+        try {
+          const handled = await handler(interaction);
+          if (handled) {
+            return;
+          }
+        } catch (error) {
+          logger.error('Error handling interaction', {
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+          });
+          return;
+        }
+      }
+
       return;
     }
 

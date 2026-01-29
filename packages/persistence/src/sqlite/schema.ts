@@ -43,10 +43,23 @@ export interface ActiveCharactersTable {
 }
 
 /**
+ * Wizard state storage table schema.
+ */
+export interface WizardStatesTable {
+  instance_id: string;
+  machine_name: string;
+  machine_version: string;
+  state_json: string;
+  expires_at: number;
+  updated_at: number;
+}
+
+/**
  * Complete database schema
  */
 export interface Database {
   users: UsersTable;
   characters: CharactersTable;
   active_characters: ActiveCharactersTable;
+  wizard_states: WizardStatesTable;
 }

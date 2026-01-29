@@ -3,6 +3,7 @@ import type {
   SlashCommandBuilder,
   SlashCommandOptionsOnlyBuilder,
   SlashCommandSubcommandsOnlyBuilder,
+  Interaction,
 } from 'discord.js';
 
 /**
@@ -18,6 +19,12 @@ export type Result<T, E = Error> =
 export type CommandHandler = (
   interaction: ChatInputCommandInteraction
 ) => Promise<void>;
+
+/**
+ * Interaction handler for non-command interactions (buttons, modals, selects).
+ * Returns true if the interaction was handled.
+ */
+export type InteractionHandler = (interaction: Interaction) => Promise<boolean>;
 
 /**
  * Feature slice definition
@@ -42,6 +49,11 @@ export interface FeatureSlice {
    * Handler function for this command
    */
   handler: CommandHandler;
+
+  /**
+   * Optional handler for component and modal interactions.
+   */
+  interactionHandler?: InteractionHandler;
 }
 
 /**

@@ -11,6 +11,7 @@ export type {
   User,
   Character,
   AttributeValue,
+  WizardStateRepo,
 } from '@discord-bot/persistence';
 
 export { AttrValue } from '@discord-bot/persistence';
@@ -21,4 +22,6 @@ export { AttrValue } from '@discord-bot/persistence';
 export interface CharacterFeatureDeps {
   userRepo: import('@discord-bot/persistence').UserRepo;
   characterRepo: import('@discord-bot/persistence').CharacterRepo;
+  wizardStateRepo: import('@discord-bot/persistence').WizardStateRepo;
+  client: import('discord.js').Client;
 }
