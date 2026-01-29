@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest';
-import { validateEntry, validatePatch, keyAffectsComputed } from '../kv/validators.js';
+import {
+  validateEntry,
+  validatePatch,
+  validateAllKeysAllowed,
+  keyAffectsComputed,
+} from '../kv/validators.js';
 import type { ParsedEntry } from '../types.js';
 
 describe('validateEntry', () => {
@@ -115,17 +120,44 @@ describe('validateEntry', () => {
   });
 
   describe('unknown keys', () => {
-    it('should store unknown key as string with warning', () => {
+    it('should reject unknown key', () => {
       const result = validateEntry({ key: 'custom.field', rawValue: '42' });
-      expect(result.valid).toBe(true);
-      expect(result.coercedType).toBe('string');
-      expect(result.value).toBe('42');
-      expect(result.warning).toContain('Unknown key');
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Unknown key');
     });
 
-    it('should include help hint in warning', () => {
+    it('should include help hint in error', () => {
       const result = validateEntry({ key: 'unknown_key', rawValue: 'value' });
-      expect(result.warning).toContain('/char show view:help');
+      expect(result.error).toContain('/char show view:help');
+    });
+  });
+
+  describe('inventory keys', () => {
+    it('should accept valid inventory key', () => {
+      const result = validateEntry({ key: 'inv.longsword.name', rawValue: 'Longsword' });
+      expect(result.valid).toBe(true);
+      expect(result.coercedType).toBe('string');
+      expect(result.value).toBe('Longsword');
+    });
+
+    it('should accept inventory number properties', () => {
+      const result = validateEntry({ key: 'inv.sword.qty', rawValue: '2' });
+      expect(result.valid).toBe(true);
+      expect(result.coercedType).toBe('number');
+      expect(result.value).toBe(2);
+    });
+
+    it('should accept inventory boolean properties', () => {
+      const result = validateEntry({ key: 'inv.plate.stealth_dis', rawValue: 'true' });
+      expect(result.valid).toBe(true);
+      expect(result.coercedType).toBe('boolean');
+      expect(result.value).toBe(true);
+    });
+
+    it('should reject invalid inventory property', () => {
+      const result = validateEntry({ key: 'inv.sword.invalid_prop', rawValue: 'test' });
+      expect(result.valid).toBe(false);
+      expect(result.error).toContain('Unknown key');
     });
   });
 });
@@ -155,16 +187,17 @@ describe('validatePatch', () => {
     expect(result.errors).toHaveLength(2);
   });
 
-  it('should collect warnings for unknown keys', () => {
+  it('should reject unknown keys with errors', () => {
+    // Note: In practice, validateAllKeysAllowed() should be called first
+    // This tests the fallback behavior in validatePatch
     const entries: ParsedEntry[] = [
       { key: 'str', rawValue: '16' },
       { key: 'custom', rawValue: 'value' },
     ];
 
     const result = validatePatch(entries);
-    expect(result.success).toBe(true);
-    expect(result.warnings).toHaveLength(1);
-    expect(result.warnings[0]).toContain('custom');
+    expect(result.success).toBe(false);
+    expect(result.errors.some((e) => e.includes('custom'))).toBe(true);
   });
 
   it('should return success false if any validation fails', () => {
@@ -177,6 +210,75 @@ describe('validatePatch', () => {
     const result = validatePatch(entries);
     expect(result.success).toBe(false);
     expect(result.errors).toHaveLength(1);
+  });
+});
+
+describe('validateAllKeysAllowed', () => {
+  it('should return undefined for all valid static keys', () => {
+    const entries: ParsedEntry[] = [
+      { key: 'str', rawValue: '16' },
+      { key: 'dex', rawValue: '14' },
+      { key: 'name', rawValue: 'Gandalf' },
+      { key: 'level', rawValue: '5' },
+    ];
+    expect(validateAllKeysAllowed(entries)).toBeUndefined();
+  });
+
+  it('should return undefined for valid inventory keys', () => {
+    const entries: ParsedEntry[] = [
+      { key: 'inv.longsword.name', rawValue: 'Longsword' },
+      { key: 'inv.longsword.damage', rawValue: '1d8' },
+      { key: 'inv.shield.ac', rawValue: '2' },
+    ];
+    expect(validateAllKeysAllowed(entries)).toBeUndefined();
+  });
+
+  it('should return error for unknown keys', () => {
+    const entries: ParsedEntry[] = [
+      { key: 'str', rawValue: '16' },
+      { key: 'unknown_key', rawValue: 'value' },
+    ];
+    const result = validateAllKeysAllowed(entries);
+    expect(result).toBeDefined();
+    expect(result!.success).toBe(false);
+    expect(result!.invalidKeys).toContain('unknown_key');
+    expect(result!.error).toContain('unknown_key');
+  });
+
+  it('should list multiple invalid keys', () => {
+    const entries: ParsedEntry[] = [
+      { key: 'foo', rawValue: '1' },
+      { key: 'bar', rawValue: '2' },
+      { key: 'str', rawValue: '16' },
+    ];
+    const result = validateAllKeysAllowed(entries);
+    expect(result).toBeDefined();
+    expect(result!.invalidKeys).toContain('foo');
+    expect(result!.invalidKeys).toContain('bar');
+    expect(result!.invalidKeys).not.toContain('str');
+  });
+
+  it('should reject invalid inventory key patterns', () => {
+    const entries: ParsedEntry[] = [
+      { key: 'inv.sword.invalid_property', rawValue: 'test' },
+    ];
+    const result = validateAllKeysAllowed(entries);
+    expect(result).toBeDefined();
+    expect(result!.invalidKeys).toContain('inv.sword.invalid_property');
+  });
+
+  it('should include help hint in error message', () => {
+    const entries: ParsedEntry[] = [{ key: 'custom', rawValue: 'value' }];
+    const result = validateAllKeysAllowed(entries);
+    expect(result).toBeDefined();
+    expect(result!.error).toContain('/char show view:help');
+  });
+
+  it('should include inventory format hint in error message', () => {
+    const entries: ParsedEntry[] = [{ key: 'custom', rawValue: 'value' }];
+    const result = validateAllKeysAllowed(entries);
+    expect(result).toBeDefined();
+    expect(result!.error).toContain('inv.<item_id>');
   });
 });
 

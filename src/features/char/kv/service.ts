@@ -14,10 +14,11 @@ import type {
 } from '../types.js';
 import { AttrValue } from '../types.js';
 import type { CharacterRepo } from '../repo/ports.js';
+import { isCharKvKey } from '@discord-bot/dnd5e-types';
 import { parsePatch } from './parser.js';
-import { validatePatch } from './validators.js';
+import { validatePatch, validateAllKeysAllowed } from './validators.js';
 import { deriveComputed } from '../computed/derive.js';
-import { getKeyConfig } from './kv.config.js';
+import { getKeyConfigOrDefault } from './kv.config.js';
 
 /**
  * Build an AttributeValue from a validated value.
@@ -76,7 +77,7 @@ function generateDiff(
 
   for (const [key, newAttr] of Object.entries(patch)) {
     const oldAttr = existing[key];
-    const config = getKeyConfig(key);
+    const config = getKeyConfigOrDefault(key);
 
     diff.push({
       key,
@@ -135,7 +136,13 @@ export async function applyPatch(
     return { success: false, error: 'No attributes to update. Patch is empty.' };
   }
 
-  // 2. Validate and coerce values
+  // 2. Validate that all keys are allowed (STRICT ENFORCEMENT)
+  const keysError = validateAllKeysAllowed(parseResult.entries);
+  if (keysError) {
+    return { success: false, error: keysError.error };
+  }
+
+  // 3. Validate and coerce values
   const validationResult = validatePatch(parseResult.entries);
   if (!validationResult.success) {
     return {
@@ -245,25 +252,42 @@ export async function unsetKeys(
 }
 
 /**
+ * Result of getting attribute values.
+ */
+export interface GetAttributeValuesResult {
+  values: Record<string, { value: string; isComputed: boolean }>;
+  hiddenKeyCount: number;
+}
+
+/**
  * Get attribute values for specific keys or prefix.
+ * Only returns allowed keys (per isCharKvKey).
+ * Tracks hidden legacy keys for warning display.
  */
 export function getAttributeValues(
   attributes: Record<string, AttributeValue>,
   options: { keys?: string[]; prefix?: string; includeComputed?: boolean }
-): Record<string, { value: string; isComputed: boolean }> {
-  const result: Record<string, { value: string; isComputed: boolean }> = {};
+): GetAttributeValuesResult {
+  const values: Record<string, { value: string; isComputed: boolean }> = {};
+  let hiddenKeyCount = 0;
 
   if (options.keys) {
     for (const key of options.keys) {
+      // Only show allowed keys
+      if (!isCharKvKey(key) && !key.startsWith('computed.')) {
+        hiddenKeyCount++;
+        continue;
+      }
+
       const attr = attributes[key];
       if (attr) {
         const val = fromAttrValue(attr);
-        result[key] = {
+        values[key] = {
           value: typeof val === 'string' ? `"${val}"` : String(val),
           isComputed: false,
         };
       } else {
-        result[key] = { value: '(unset)', isComputed: false };
+        values[key] = { value: '(unset)', isComputed: false };
       }
     }
   }
@@ -271,8 +295,14 @@ export function getAttributeValues(
   if (options.prefix) {
     for (const [key, attr] of Object.entries(attributes)) {
       if (key.startsWith(options.prefix)) {
+        // Only show allowed keys
+        if (!isCharKvKey(key)) {
+          hiddenKeyCount++;
+          continue;
+        }
+
         const val = fromAttrValue(attr);
-        result[key] = {
+        values[key] = {
           value: typeof val === 'string' ? `"${val}"` : String(val),
           isComputed: false,
         };
@@ -291,7 +321,7 @@ export function getAttributeValues(
       const matchesPrefix =
         options.prefix && 'computed.proficiency'.startsWith(options.prefix);
       if (matchesKeys || matchesPrefix || (!options.keys && !options.prefix)) {
-        result['computed.proficiency'] = {
+        values['computed.proficiency'] = {
           value: `+${computed.proficiencyBonus}`,
           isComputed: true,
         };
@@ -308,7 +338,7 @@ export function getAttributeValues(
         );
         const matchesPrefix = options.prefix && computedKey.startsWith(options.prefix);
         if (matchesKeys || matchesPrefix || (!options.keys && !options.prefix)) {
-          result[computedKey] = {
+          values[computedKey] = {
             value: mod >= 0 ? `+${mod}` : `${mod}`,
             isComputed: true,
           };
@@ -317,5 +347,25 @@ export function getAttributeValues(
     }
   }
 
-  return result;
+  return { values, hiddenKeyCount };
+}
+
+/**
+ * Count unsupported (hidden) keys in character attributes.
+ */
+export function countHiddenKeys(attributes: Record<string, AttributeValue>): number {
+  let count = 0;
+  for (const key of Object.keys(attributes)) {
+    if (!isCharKvKey(key)) {
+      count++;
+    }
+  }
+  return count;
+}
+
+/**
+ * Get all hidden (unsupported) key names.
+ */
+export function getHiddenKeys(attributes: Record<string, AttributeValue>): string[] {
+  return Object.keys(attributes).filter((key) => !isCharKvKey(key));
 }

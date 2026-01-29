@@ -185,22 +185,15 @@ describe('applyPatch', () => {
     }
   });
 
-  it('should include warnings for unknown keys', async () => {
+  it('should reject unknown keys', async () => {
     const character = createMockCharacter({});
-
-    vi.mocked(mockRepo.updateAttributes).mockResolvedValueOnce(
-      createMockCharacter({
-        str: AttrValue.num(16),
-        custom: AttrValue.str('value'),
-      })
-    );
 
     const result = await applyPatch(character, '{str:16, custom:value}', mockRepo);
 
-    expect(result.success).toBe(true);
-    if (result.success) {
-      expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings[0]).toContain('custom');
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error).toContain('custom');
+      expect(result.error).toContain('Unknown keys');
     }
   });
 
@@ -339,18 +332,18 @@ describe('getAttributeValues', () => {
       name: AttrValue.str('Gandalf'),
     };
 
-    const result = getAttributeValues(attrs, { keys: ['str', 'name'] });
+    const { values } = getAttributeValues(attrs, { keys: ['str', 'name'] });
 
-    expect(result['str']?.value).toBe('16');
-    expect(result['name']?.value).toBe('"Gandalf"');
+    expect(values['str']?.value).toBe('16');
+    expect(values['name']?.value).toBe('"Gandalf"');
   });
 
   it('should show (unset) for missing keys', () => {
     const attrs: Record<string, AttributeValue> = {};
 
-    const result = getAttributeValues(attrs, { keys: ['str'] });
+    const { values } = getAttributeValues(attrs, { keys: ['str'] });
 
-    expect(result['str']?.value).toBe('(unset)');
+    expect(values['str']?.value).toBe('(unset)');
   });
 
   it('should filter by prefix', () => {
@@ -358,15 +351,15 @@ describe('getAttributeValues', () => {
       'weapon.primary.name': AttrValue.str('Sword'),
       'weapon.primary.damage': AttrValue.str('1d8'),
       'weapon.secondary.name': AttrValue.str('Dagger'),
-      'armor.type': AttrValue.str('Leather'),
+      'inv.sword.name': AttrValue.str('Magic Sword'),
     };
 
-    const result = getAttributeValues(attrs, { prefix: 'weapon.primary' });
+    const { values } = getAttributeValues(attrs, { prefix: 'weapon.primary' });
 
-    expect(Object.keys(result)).toHaveLength(2);
-    expect(result['weapon.primary.name']).toBeDefined();
-    expect(result['weapon.primary.damage']).toBeDefined();
-    expect(result['armor.type']).toBeUndefined();
+    expect(Object.keys(values)).toHaveLength(2);
+    expect(values['weapon.primary.name']).toBeDefined();
+    expect(values['weapon.primary.damage']).toBeDefined();
+    expect(values['inv.sword.name']).toBeUndefined();
   });
 
   it('should include computed values when requested', () => {
@@ -375,14 +368,33 @@ describe('getAttributeValues', () => {
       str: AttrValue.num(16),
     };
 
-    const result = getAttributeValues(attrs, {
+    const { values } = getAttributeValues(attrs, {
       keys: ['level', 'computed.proficiency'],
       includeComputed: true,
     });
 
-    expect(result['computed.proficiency']).toBeDefined();
-    expect(result['computed.proficiency']?.value).toBe('+3');
-    expect(result['computed.proficiency']?.isComputed).toBe(true);
+    expect(values['computed.proficiency']).toBeDefined();
+    expect(values['computed.proficiency']?.value).toBe('+3');
+    expect(values['computed.proficiency']?.isComputed).toBe(true);
+  });
+
+  it('should track hidden key count for unsupported keys', () => {
+    const attrs: Record<string, AttributeValue> = {
+      str: AttrValue.num(16),
+      dex: AttrValue.num(14),
+      'legacy_unsupported': AttrValue.str('old data'),
+    };
+
+    // Request specific keys including an unsupported one
+    const { values, hiddenKeyCount } = getAttributeValues(attrs, {
+      keys: ['str', 'dex', 'legacy_unsupported'],
+    });
+
+    // str and dex should be visible, legacy_unsupported should be hidden
+    expect(values['str']).toBeDefined();
+    expect(values['dex']).toBeDefined();
+    expect(values['legacy_unsupported']).toBeUndefined();
+    expect(hiddenKeyCount).toBe(1);
   });
 });
 
