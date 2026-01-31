@@ -61,6 +61,26 @@ export interface Character {
   readonly updatedAt: string;
 }
 
+/**
+ * Monster/NPC domain model.
+ * Monsters are scoped per guild (not per user).
+ * Any user with DM capability can manage monsters.
+ */
+export interface Monster {
+  /** Internal UUID identifier */
+  readonly id: string;
+  /** Discord guild ID (snowflake) where this monster exists */
+  readonly guildId: string;
+  /** Monster name (unique per guildId, case-insensitive) */
+  readonly name: string;
+  /** Key-value attributes with typed values (flexible keys allowed) */
+  readonly attributes: Record<string, AttributeValue>;
+  /** ISO 8601 timestamp of creation */
+  readonly createdAt: string;
+  /** ISO 8601 timestamp of last update */
+  readonly updatedAt: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Encounter Models
 // ─────────────────────────────────────────────────────────────────────────────

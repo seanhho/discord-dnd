@@ -10,4 +10,5 @@ export { SqliteCharacterRepo } from './characterRepo.js';
 export { SqliteEncounterRepo } from './encounterRepo.js';
 export { SqliteEncounterParticipantRepo } from './encounterParticipantRepo.js';
 export { SqliteEncounterEventRepo } from './encounterEventRepo.js';
+export { SqliteMonsterRepo } from './monsterRepo.js';
 export { runMigrations, rollbackMigration } from './migrator.js';

@@ -94,6 +94,30 @@ export interface EncounterEventsTable {
 }
 
 /**
+ * Monsters table schema
+ */
+export interface MonstersTable {
+  id: string;
+  guild_id: string;
+  name: string;
+  /** Lowercase name for case-insensitive uniqueness */
+  name_lower: string;
+  /** JSON-encoded Record<string, AttributeValue> */
+  attributes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * Active monster mapping table schema.
+ * Primary key is guild_id (one active monster per guild).
+ */
+export interface ActiveMonstersTable {
+  guild_id: string;
+  monster_id: string;
+}
+
+/**
  * Complete database schema
  */
 export interface Database {
@@ -103,4 +127,6 @@ export interface Database {
   encounters: EncountersTable;
   encounter_participants: EncounterParticipantsTable;
   encounter_events: EncounterEventsTable;
+  monsters: MonstersTable;
+  active_monsters: ActiveMonstersTable;
 }

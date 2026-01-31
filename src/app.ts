@@ -4,6 +4,7 @@ import {
   SqliteClient,
   SqliteUserRepo,
   SqliteCharacterRepo,
+  SqliteMonsterRepo,
 } from '@discord-bot/persistence';
 import { createFeatureRegistry } from './core/featureRegistry.js';
 import { createCommandRouter } from './core/commandRouter.js';
@@ -12,6 +13,7 @@ import { env } from './core/env.js';
 // Import all feature slices
 import { diceFeature } from './features/dice/index.js';
 import { charFeature, initCharFeature } from './features/char/index.js';
+import { monsterFeature, initMonsterFeature } from './features/monster/index.js';
 
 /**
  * Application context holding all wired dependencies
@@ -52,6 +54,7 @@ export async function createApp(): Promise<AppContext> {
   // Create repository instances
   const userRepo = new SqliteUserRepo(dbClient.kysely);
   const characterRepo = new SqliteCharacterRepo(dbClient.kysely);
+  const monsterRepo = new SqliteMonsterRepo(dbClient.kysely);
 
   // Create Discord client with required intents
   const client = new Client({
@@ -67,10 +70,14 @@ export async function createApp(): Promise<AppContext> {
   // Initialize character feature with dependencies
   initCharFeature({ userRepo, characterRepo });
 
+  // Initialize monster feature with dependencies
+  initMonsterFeature({ userRepo, monsterRepo });
+
   // Register all feature slices
   logger.info('Registering feature slices');
   registry.register(diceFeature);
   registry.register(charFeature);
+  registry.register(monsterFeature);
 
   logger.info(`Registered ${registry.getAll().length} feature(s)`);
 

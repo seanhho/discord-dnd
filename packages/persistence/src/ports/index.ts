@@ -9,6 +9,7 @@ export type {
   User,
   Character,
   AttributeValue,
+  Monster,
   Encounter,
   EncounterStatus,
   EncounterParticipant,
@@ -43,3 +44,15 @@ export type {
   EncounterEventRepo,
   AppendEventParams,
 } from './encounterRepo.js';
+
+// Monster repository interfaces
+export type {
+  MonsterRepo,
+  CreateMonsterParams,
+  GetMonsterByNameParams,
+  ListMonstersParams,
+  UpdateMonsterAttributesParams,
+  UnsetMonsterAttributesParams,
+  SetActiveMonsterParams,
+  GetActiveMonsterParams,
+} from './monsterRepo.js';
