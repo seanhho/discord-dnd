@@ -1,6 +1,8 @@
 import { Kysely, Migrator, type MigrationProvider, type Migration } from 'kysely';
 import * as migration001 from './migrations/001_initial.js';
 import * as migration003 from './migrations/003_dm_capability.js';
+import * as migration005 from './migrations/005_encounters.js';
+import * as migration006 from './migrations/006_monsters.js';
 
 /**
  * Static migration provider that bundles all migrations.
@@ -11,6 +13,8 @@ class StaticMigrationProvider implements MigrationProvider {
     return {
       '001_initial': migration001,
       '003_dm_capability': migration003,
+      '005_encounters': migration005,
+      '006_monsters': migration006,
     };
   }
 }

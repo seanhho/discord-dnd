@@ -60,3 +60,131 @@ export interface Character {
   /** ISO 8601 timestamp of last update */
   readonly updatedAt: string;
 }
+
+/**
+ * Monster/NPC domain model.
+ * Monsters are scoped per guild (not per user).
+ * Any user with DM capability can manage monsters.
+ */
+export interface Monster {
+  /** Internal UUID identifier */
+  readonly id: string;
+  /** Discord guild ID (snowflake) where this monster exists */
+  readonly guildId: string;
+  /** Monster name (unique per guildId, case-insensitive) */
+  readonly name: string;
+  /** Key-value attributes with typed values (flexible keys allowed) */
+  readonly attributes: Record<string, AttributeValue>;
+  /** ISO 8601 timestamp of creation */
+  readonly createdAt: string;
+  /** ISO 8601 timestamp of last update */
+  readonly updatedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Encounter Models
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Encounter lifecycle status.
+ */
+export type EncounterStatus = 'setup' | 'initiative' | 'running' | 'paused' | 'ended';
+
+/**
+ * Encounter domain model.
+ *
+ * An encounter represents a combat session in a Discord context.
+ * It does NOT store character state (HP, conditions, etc.) - that lives in
+ * the character KV store.
+ *
+ * Key constraints:
+ * - Only ONE non-ended encounter per (guildId, channelId, threadId) context
+ * - Any user with DM capability can manage any encounter
+ * - created_by is for audit only, not permission control
+ */
+export interface Encounter {
+  /** Internal UUID identifier */
+  readonly id: string;
+  /** Encounter name/description */
+  readonly name: string;
+  /** Lifecycle status */
+  readonly status: EncounterStatus;
+  /** Discord guild ID (null for DMs) */
+  readonly guildId: string | null;
+  /** Discord channel ID */
+  readonly channelId: string;
+  /** Discord thread ID (null if not in a thread) */
+  readonly threadId: string | null;
+  /** Discord user ID who created the encounter (audit only) */
+  readonly createdByDiscordUserId: string;
+  /** Current combat round (1-indexed) */
+  readonly round: number;
+  /** Index into the sorted participant list for current turn */
+  readonly turnIndex: number;
+  /** Whether initiative order is locked (can't add/remove participants) */
+  readonly initiativeLocked: boolean;
+  /** ISO 8601 timestamp of creation */
+  readonly createdAt: string;
+  /** ISO 8601 timestamp of last update */
+  readonly updatedAt: string;
+}
+
+/**
+ * Participant kind discriminator.
+ */
+export type ParticipantKind = 'pc' | 'npc';
+
+/**
+ * Encounter participant domain model.
+ *
+ * Represents a combatant in an encounter. For PCs, this references a character.
+ * For NPCs, this stores minimal identity only (no stat blocks).
+ *
+ * Character state (HP, conditions, etc.) is NOT stored here - it lives in
+ * the character KV store.
+ */
+export interface EncounterParticipant {
+  /** Internal UUID identifier */
+  readonly id: string;
+  /** Encounter this participant belongs to */
+  readonly encounterId: string;
+  /** Whether this is a PC or NPC */
+  readonly kind: ParticipantKind;
+  /** Display name in initiative order */
+  readonly displayName: string;
+  /** Initiative roll value (null until set) */
+  readonly initiative: number | null;
+  /** Precomputed sort order for efficient queries */
+  readonly sortOrder: number | null;
+  /** Character ID (required for PCs, null for NPCs) */
+  readonly characterId: string | null;
+  /** Discord user ID (convenience for PCs) */
+  readonly discordUserId: string | null;
+  /** NPC reference ID/slug (for NPCs only) */
+  readonly npcRef: string | null;
+  /** Notes (for NPCs only) */
+  readonly notes: string | null;
+  /** ISO 8601 timestamp of creation */
+  readonly createdAt: string;
+  /** ISO 8601 timestamp of last update */
+  readonly updatedAt: string;
+}
+
+/**
+ * Encounter event for audit/debug logging.
+ * Does NOT store character state - only records actions taken.
+ */
+export interface EncounterEvent {
+  /** Internal UUID identifier */
+  readonly id: string;
+  /** Encounter this event belongs to */
+  readonly encounterId: string;
+  /** ISO 8601 timestamp of when the event occurred */
+  readonly createdAt: string;
+  /** Discord user ID who performed the action (if applicable) */
+  readonly actorDiscordUserId: string | null;
+  /** Event type identifier */
+  readonly eventType: string;
+  /** JSON payload with event-specific data */
+  readonly payload: unknown;
+}
