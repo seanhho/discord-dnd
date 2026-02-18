@@ -223,3 +223,32 @@ const result = rollAttack(character, LONGSWORD, 'none', {}, rng);
 expect(result.chosenRoll).toBe(20);
 expect(result.isCrit).toBe(true);
 ```
+
+
+---
+## Standardized Documentation Addendum
+(Generated – do not edit above this line)
+
+## Overview
+
+D&D 5e rules engine workspace providing rules logic, curated rules data, and adapters.
+
+## Public API
+
+- Package entrypoint: `@discord-bot/dnd5e`
+- `main`: `./dist/index.js`
+- `types`: `./dist/index.d.ts`
+- `exports`:
+  - `.` → `import: ./dist/index.js`, `types: ./dist/index.d.ts`
+  - `./rules` → `import: ./dist/rules/index.js`, `types: ./dist/rules/index.d.ts`
+  - `./data` → `import: ./dist/data/index.js`, `types: ./dist/data/index.d.ts`
+  - `./adapters` → `import: ./dist/adapters/index.js`, `types: ./dist/adapters/index.d.ts`
+
+## Design Notes
+
+- Internal workspace package (`private: true`) that depends on `@discord-bot/dnd5e-types`.
+- Uses multiple subpath exports to separate rules, data, and adapters.
+
+## Change History
+
+- 2026-02-18: Standardized documentation addendum appended.

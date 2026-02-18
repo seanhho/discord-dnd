@@ -123,3 +123,41 @@ npm run build -w @discord-bot/dnd5e-types
 # Test
 npm run test -w @discord-bot/dnd5e-types
 ```
+
+
+---
+## Standardized Documentation Addendum
+(Generated – do not edit above this line)
+
+## Overview
+
+Stable D&D 5e type definitions workspace intended for broad internal reuse.
+
+## Public API
+
+- Package entrypoint: `@discord-bot/dnd5e-types`
+- `main`: `./dist/index.js`
+- `types`: `./dist/index.d.ts`
+- `exports`:
+  - `.` → `import: ./dist/index.js`, `types: ./dist/index.d.ts`
+
+## Design Notes
+
+- Internal workspace package (`private: true`) focused on types-only distribution.
+- Exposes a single root export path.
+
+## Usage
+
+```bash
+npm run build -w @discord-bot/dnd5e-types
+```
+
+Import from the package root entrypoint:
+
+```ts
+import { /* exported members */ } from '@discord-bot/dnd5e-types';
+```
+
+## Change History
+
+- 2026-02-18: Standardized documentation addendum appended.

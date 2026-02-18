@@ -250,3 +250,37 @@ export async function down(db: Kysely<unknown>): Promise<void> {
   // Rollback logic
 }
 ```
+
+
+---
+## Standardized Documentation Addendum
+(Generated – do not edit above this line)
+
+## Overview
+
+Persistence layer workspace with repository interfaces and SQLite adapter support.
+
+## Public API
+
+- Package entrypoint: `@discord-bot/persistence`
+- `main`: `./dist/index.js`
+- `types`: `./dist/index.d.ts`
+- `exports`:
+  - `.` → `import: ./dist/index.js`, `types: ./dist/index.d.ts`
+  - `./ports` → `import: ./dist/ports/index.js`, `types: ./dist/ports/index.d.ts`
+  - `./sqlite` → `import: ./dist/sqlite/index.js`, `types: ./dist/sqlite/index.d.ts`
+
+## Design Notes
+
+- Internal workspace package (`private: true`) with subpath exports for ports and SQLite adapter layers.
+- Built around `kysely` and `better-sqlite3` dependencies declared in package metadata.
+
+## Development
+
+- Build: `npm run build -w @discord-bot/persistence`
+- Clean: `npm run clean -w @discord-bot/persistence`
+- Test: `npm run test -w @discord-bot/persistence`
+
+## Change History
+
+- 2026-02-18: Standardized documentation addendum appended.

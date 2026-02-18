@@ -370,3 +370,47 @@ import { createTestHarness, TestEffectRunner } from '@discord-bot/state-machine/
 ## License
 
 MIT
+
+
+---
+## Standardized Documentation Addendum
+(Generated – do not edit above this line)
+
+## Overview
+
+Reusable state machine workspace with catalog-driven validation, effects, and testing utilities.
+
+## Public API
+
+- Package entrypoint: `@discord-bot/state-machine`
+- `main`: `dist/index.js`
+- `types`: `dist/index.d.ts`
+- `exports`:
+  - `.` → `import: ./dist/index.js`, `types: ./dist/index.d.ts`
+  - `./testing` → `import: ./dist/testing.js`, `types: ./dist/testing.d.ts`
+
+## Design Notes
+
+- Distributed as a standalone workspace package with a primary runtime entrypoint plus testing subpath export.
+- Package metadata does not mark this workspace as private.
+
+## Usage
+
+```bash
+npm run build -w @discord-bot/state-machine
+```
+
+Import from the package root entrypoint:
+
+```ts
+import { createMachine } from '@discord-bot/state-machine';
+```
+
+## Development
+
+- Build: `npm run build -w @discord-bot/state-machine`
+- Test: `npm run test -w @discord-bot/state-machine`
+
+## Change History
+
+- 2026-02-18: Standardized documentation addendum appended.
